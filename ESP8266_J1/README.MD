@@ -1,6 +1,6 @@
 Target that can be achieved with the code:
 1. Voice control of appliance on/off
-2. On/off Control based on family member location
+2. On/off control based on family member location
 3. Cell phone app control of appliance
 -------------------------------------------
 通过代码可完成目标：
