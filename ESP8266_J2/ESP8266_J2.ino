@@ -1,6 +1,8 @@
 #define BLYNK_PRINT Serial
 #define Jingwei_Home V1 //Blynk virtual pin 1 that stores the status of Jingwei
 #define Chuyi_Home V2 //Blynk virtual pin 2 that stores the status of Chuyi
+#include <ThingSpeak.h>
+#include <dht11.h>
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 #include <ESP8266HTTPClient.h>
@@ -18,8 +20,22 @@ char pass[] = "PASS";
 int whether_jingwei_ishome = 0;
 int whether_chuyi_ishome = 0;
 
-String apiKey = "THINGSPEAK_API_KEY";
-//Thingspeak write API key for the status channel
+//ThingSpeak information
+char thingSpeakAddress[]="api.thingspeak.com";
+unsigned long channelID = YOUR_CHANNEL_ID;
+//char* readAPIKey = "XXXXXXXX";
+char* writeAPIKey = "YOUR_WRITE_API_KEY_CHANNEL1";
+String apiKey = "YOUR_WRITE_API_KEY_CHANNEL2";
+const unsigned long postingInterval = 30L * 1000L;
+unsigned int dataFieldOne = 1;
+unsigned int dataFieldTwo = 2;
+unsigned int dataFieldThree = 3;
+unsigned long lastConnectionTime = 0;
+long lastUpdateTime = 0;
+WiFiClient client;
+
+dht11 DHT11;
+#define DHT11PIN 4
 
 // To read data from Blynk app widgets
 BLYNK_WRITE(Jingwei_Home)
@@ -85,21 +101,35 @@ void updatestate(int state){
 void setup()
 {
   // Debug console
-  Serial.begin(9600);
-
+  Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
   // You can also specify server:
   //Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 8442);
   //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8442);
+  ThingSpeak.begin( client );
 }
 
 void loop()
 {
   Blynk.run();
+  //Post the temperature and humidity data to ThingSpeak channel periodically
+  if (millis() - lastUpdateTime >= postingInterval) {
+    lastUpdateTime = millis();
+    // Read data from DHT11 temperature and humidity sensor
+    int chk = DHT11.read(DHT11PIN);
+    float currentTemp = DHT11.temperature;
+    float currentHumidity = DHT11.humidity;
+    write2TSData(channelID, dataFieldOne, currentTemp, dataFieldTwo, currentHumidity);
+  }
+}
 
+//Write values to different ThingSpeak channel fields using ThingSpeak library
+int write2TSData(long TSChannel, unsigned int TSField1, float field1Data, unsigned int TSField2, float field2Data){
+  ThingSpeak.setField(TSField1,field1Data);
+  ThingSpeak.setField(TSField2,field2Data);
+  //ThingSpeak.setField(TSField3,field3Data);
 
-  // You can inject your own code or combine it with other sketches.
-  // Check other examples on how to communicate with Blynk. Remember
-  // to avoid delay() function!
+  int writeSuccess = ThingSpeak.writeFields(TSChannel, writeAPIKey);
+  return writeSuccess;
 }
 
